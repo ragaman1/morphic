@@ -43,7 +43,7 @@ export function FollowupPanel() {
         <Textarea
           ref={inputRef}
           name="input"
-          rows={10}
+          rows={1}
           tabIndex={0}
           placeholder="Ask a question..."
           spellCheck={false}
