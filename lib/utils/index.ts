@@ -1,72 +1,42 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { createOllama } from 'ollama-ai-provider'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createAzure } from '@ai-sdk/azure';
-import { google } from '@ai-sdk/google'
-import { anthropic } from '@ai-sdk/anthropic'
 import { CoreMessage } from 'ai'
 
+/**
+ * Combines multiple class names into a single string with proper merging.
+ * Utilizes `clsx` for conditional classNames and `twMerge` for Tailwind-specific merging.
+ *
+ * @param inputs - An array of class name values.
+ * @returns A single merged class name string.
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Configures and returns an OpenAI chat model instance via a proxy URL.
+ *
+ * @param useSubModel - Optional boolean to determine if a sub-model should be used.
+ * @returns An instance of the OpenAI chat model.
+ * @throws Will throw an error if required environment variables are missing.
+ */
 export function getModel(useSubModel = false) {
-  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL + '/api'
-  const ollamaModel = process.env.OLLAMA_MODEL
-  const ollamaSubModel = process.env.OLLAMA_SUB_MODEL
   const openaiApiBase = process.env.OPENAI_API_BASE
   const openaiApiKey = process.env.OPENAI_API_KEY
-  let openaiApiModel = process.env.OPENAI_API_MODEL || 'gpt-4o'
-  const azureResourceName = process.env.AZURE_RESOURCE_NAME
-  const azureApiKey = process.env.AZURE_API_KEY
-  let azureDeploymentName = process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4o'
-  const googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY
+  const openaiApiModel = process.env.OPENAI_API_MODEL || 'gpt-4o'
 
-  if (
-    !(ollamaBaseUrl && ollamaModel) &&
-    !openaiApiKey &&
-    !googleApiKey &&
-    !anthropicApiKey
-  ) {
+  // Validate required environment variables for OpenAI
+  if (!openaiApiBase || !openaiApiKey) {
     throw new Error(
-      'Missing environment variables for Ollama, OpenAI, Azure OpenAI, Google or Anthropic'
+      'Missing environment variables for OpenAI. Ensure OPENAI_API_BASE and OPENAI_API_KEY are set.'
     )
   }
-  // Ollama
-  if (ollamaBaseUrl && ollamaModel) {
-    const ollama = createOllama({ baseURL: ollamaBaseUrl })
 
-    if (useSubModel && ollamaSubModel) {
-      return ollama(ollamaSubModel)
-    }
-
-    return ollama(ollamaModel)
-  }
-
-  if (googleApiKey) {
-    return google('models/gemini-1.5-pro-latest')
-  }
-
-  if (anthropicApiKey) {
-    return anthropic('claude-3-5-sonnet-20240620')
-  }
-
-  if (azureApiKey && azureResourceName) {
-    const azure = createAzure({
-      apiKey: azureApiKey,
-      resourceName: azureResourceName
-    })
-
-    return azure.chat(azureDeploymentName)
-  }
-
-  // Fallback to OpenAI instead
+  // Initialize the OpenAI instance with proxy settings
   const openai = createOpenAI({
-    baseURL: openaiApiBase, // optional base URL for proxies etc.
-    apiKey: openaiApiKey, // optional API key, default to env property OPENAI_API_KEY
-    organization: '' // optional organization
+    baseURL: openaiApiBase, // Proxy URL for OpenAI API
+    apiKey: openaiApiKey // OpenAI API Key
   })
 
   return openai.chat(openaiApiModel)
@@ -77,8 +47,8 @@ export function getModel(useSubModel = false) {
  * Changes the role to 'assistant' and converts the content to a JSON string.
  * Returns the modified messages as an array of CoreMessage.
  *
- * @param aiMessages - Array of AIMessage
- * @returns modifiedMessages - Array of modified messages
+ * @param messages - Array of CoreMessage objects.
+ * @returns Array of modified CoreMessage objects.
  */
 export function transformToolMessages(messages: CoreMessage[]): CoreMessage[] {
   return messages.map(message =>
@@ -94,9 +64,10 @@ export function transformToolMessages(messages: CoreMessage[]): CoreMessage[] {
 }
 
 /**
- * Sanitizes a URL by replacing spaces with '%20'
- * @param url - The URL to sanitize
- * @returns The sanitized URL
+ * Sanitizes a URL by replacing spaces with '%20'.
+ *
+ * @param url - The URL to sanitize.
+ * @returns The sanitized URL.
  */
 export function sanitizeUrl(url: string): string {
   return url.replace(/\s+/g, '%20')
